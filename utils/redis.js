@@ -10,8 +10,7 @@ class RedisClient {
 
   isAlive() {
     try {
-      this._client.ping();
-      return true;
+      return this._client.ping();
     } catch (error) {
       return false;
     }
