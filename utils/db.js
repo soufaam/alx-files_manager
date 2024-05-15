@@ -14,48 +14,27 @@ class DBClient {
     if (process.env.DB_DATABASE !== undefined) {
       this._dbName = process.env.DB_DATABASE;
     }
-    const uri = `mongodb://${host}:${port}/${this._dbName}`;
+    const uri = `mongodb://${host}:${port}`;
     console.log(uri);
-    this._client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    MongoClient.connect(uri, { useUnifiedTopology: true }, (err, client) => {
+      if (err) {
+        this._client = false;
+      } else {
+        this._client = client.db(this._dbName);
+      }
+    });
   }
 
   isAlive() {
-    try {
-      this._client.connect();
-      return true;
-    } catch (error) {
-      return false;
-    }
+    return !!this._client;
   }
 
   async nbUsers() {
-    try {
-      await this._client.connect();
-      const db = this._client.db();
-      const collection = db.collection('users');
-      const count = await collection.countDocuments();
-      return count;
-    } catch (error) {
-      console.error(error);
-      return -1;
-    } finally {
-      await this._client.close();
-    }
+    return this._client.collection('users').countDocuments();
   }
 
   async nbFiles() {
-    try {
-      await this._client.connect();
-      const db = this._client.db();
-      const collection = db.collection('files');
-      const count = await collection.countDocuments();
-      return count;
-    } catch (error) {
-      console.error(error);
-      return -1;
-    } finally {
-      await this._client.close();
-    }
+    return this._client.collection('files').countDocuments();
   }
 }
 

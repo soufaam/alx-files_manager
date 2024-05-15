@@ -1,5 +1,5 @@
-const express = require('express');
-const endpoints = require('./routes');
+import express from 'express';
+import endpoints from './routes';
 
 const app = express();
 const port = process.env.PORT || 5000;
