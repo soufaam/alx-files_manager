@@ -1,9 +1,10 @@
 import crypto from 'crypto';
+import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
-const usersController = {};
-usersController.postNew = async (req, res) => {
+const UserController = {};
+UserController.postNew = async (req, res) => {
   const { email, password } = req.body;
   if (!email) {
     res.status(400).json({ error: 'Missing email' });
@@ -27,15 +28,17 @@ usersController.postNew = async (req, res) => {
   }
 };
 
-usersController.getMe = async (req, res) => {
+UserController.getMe = async (req, res) => {
   const { headers } = req;
   console.log(headers);
   const token = headers['x-token'];
-  redisClient.get(token)
+  const key = `auth_${token}`;
+  console.log(key);
+  redisClient.get(key)
     .then(async (value) => {
       if (value) {
         console.log(value);
-        const user = await dbClient._client.collection('users').findOne({ email: value });
+        const user = await dbClient._client.collection('users').findOne({ _id: ObjectId(value) });
         console.log(user);
         res.status(200).json({ email: user.email, id: user._id });
       }
@@ -44,4 +47,4 @@ usersController.getMe = async (req, res) => {
       res.status(401).json({ error: 'Unauthorized' });
     });
 };
-export default usersController;
+export default UserController;

@@ -18,9 +18,11 @@ AuthController.getConnect = async (req, res) => {
   const user = await dbClient._client.collection('users').findOne({ email });
   if (user && user.password === newHashedPassword) {
     const token = uuidv4();
+    const key = `auth_${token}`;
     const now = new Date();
     const expiryTime = now.getTime() + (24 * 60 * 60 * 1000);
-    await redisClient.set(token, user.email, expiryTime);
+    console.log(user._id);
+    await redisClient.set(key, user._id.toString(), expiryTime);
     res.status(200).json({ token });
   } else {
     res.status(401).json({ error: 'Unauthorized' });
@@ -31,13 +33,13 @@ AuthController.getDisconnect = async (req, res) => {
   const { headers } = req;
   console.log(headers);
   const token = headers['x-token'];
-  console.log(token);
-  redisClient.get(token)
+  const key = `auth_${token}`;
+  redisClient.get(key)
     .then((value) => {
       if (value) {
         console.log(value);
-        redisClient.del(token);
-        res.status(200).send();
+        redisClient.del(key);
+        res.status(204).send();
       } else {
         res.status(401).json({ error: 'Unauthorized' });
       }
