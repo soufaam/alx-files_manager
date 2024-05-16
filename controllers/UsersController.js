@@ -1,6 +1,6 @@
+import crypto from 'crypto';
 import dbClient from '../utils/db';
-
-const crypto = require('crypto');
+import redisClient from '../utils/redis';
 
 const usersController = {};
 usersController.postNew = async (req, res) => {
@@ -27,4 +27,21 @@ usersController.postNew = async (req, res) => {
   }
 };
 
+usersController.getMe = async (req, res) => {
+  const { headers } = req;
+  console.log(headers);
+  const token = headers['x-token'];
+  redisClient.get(token)
+    .then(async (value) => {
+      if (value) {
+        console.log(value);
+        const user = await dbClient._client.collection('users').findOne({ email: value });
+        console.log(user);
+        res.status(200).json({ email: user.email, id: user._id });
+      }
+    })
+    .catch(() => {
+      res.status(401).json({ error: 'Unauthorized' });
+    });
+};
 export default usersController;
