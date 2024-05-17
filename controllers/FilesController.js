@@ -24,7 +24,7 @@ FilesController.postUpload = async (req, res) => {
 
   let parentId = req.body.parentId || '0';
   if (parentId !== '0') {
-    const parentFile = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(parentId) });
+    const parentFile = await dbClient._client.collection('files').findOne({ _id: ObjectId(parentId) });
     if (!parentFile) return res.status(400).json({ error: 'Parent not found' });
     if (parentFile.type !== 'folder') return res.status(400).json({ error: 'Parent is not a folder' });
   }
@@ -37,7 +37,7 @@ FilesController.postUpload = async (req, res) => {
     parentId,
   };
   if (type === 'folder') {
-    const newFolder = await dbClient.dbClient.collection('files').insertOne({
+    const newFolder = await dbClient._client.collection('files').insertOne({
       id, name, type, isPublic: isPublic || false, parentId,
     });
     folderData.parentId = parentId === '0' ? 0 : ObjectId(parentId);
