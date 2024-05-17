@@ -61,4 +61,15 @@ FilesController.postUpload = async (req, res) => {
   return res.status(201).json({ id: newFile.insertedId, localPath, ...folderData });
 };
 
+FilesController.getShow = async (req, res) => {
+  const token = req.header('X-Token');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const userId = await redisClient.get(`auth_${token}`);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  const fileId = req.params.id;
+  const file = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  return res.json(file);
+};
+
 export default FilesController;
