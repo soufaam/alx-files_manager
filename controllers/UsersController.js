@@ -32,15 +32,19 @@ UserController.getMe = async (req, res) => {
   const { headers } = req;
   console.log(headers);
   const token = headers['x-token'];
+  if (!token) {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
   const key = `auth_${token}`;
-  console.log(key);
+  console.log(`Key => ${key}`);
   redisClient.get(key)
     .then(async (value) => {
       if (value) {
-        console.log(value);
         const user = await dbClient._client.collection('users').findOne({ _id: ObjectId(value) });
         console.log(user);
         res.status(200).json({ email: user.email, id: user._id });
+      } else {
+        res.status(401).json({ error: 'Unauthorized' });
       }
     })
     .catch(() => {
