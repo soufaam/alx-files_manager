@@ -12,18 +12,22 @@ AuthController.getConnect = async (req, res) => {
   const base64Credentials = headers.authorization.split(' ')[1];
   const decodedCredentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
   const [email, password] = decodedCredentials.split(':');
-  const sha1 = crypto.createHash('sha1');
-  sha1.update(password);
-  const newHashedPassword = sha1.digest('hex');
-  const user = await dbClient._client.collection('users').findOne({ email });
-  if (user && user.password === newHashedPassword) {
-    const token = uuidv4();
-    const key = `auth_${token}`;
-    const now = new Date();
-    const expiryTime = now.getTime() + (24 * 60 * 60 * 1000);
-    console.log(user._id);
-    await redisClient.set(key, user._id.toString(), expiryTime);
-    res.status(200).json({ token });
+  if (password) {
+    const sha1 = crypto.createHash('sha1');
+    sha1.update(password);
+    const newHashedPassword = sha1.digest('hex');
+    const user = await dbClient._client.collection('users').findOne({ email });
+    if (user && user.password === newHashedPassword) {
+      const token = uuidv4();
+      const key = `auth_${token}`;
+      const now = new Date();
+      const expiryTime = now.getTime() + (24 * 60 * 60 * 1000);
+      console.log(user._id);
+      await redisClient.set(key, user._id.toString(), expiryTime);
+      res.status(200).json({ token });
+    } else {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
   } else {
     res.status(401).json({ error: 'Unauthorized' });
   }
