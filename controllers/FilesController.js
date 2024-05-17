@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { ObjectId } from 'mongodb';
 import path from 'path';
+import mime from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
@@ -67,7 +68,7 @@ FilesController.getShow = async (req, res) => {
   const userId = await redisClient.get(`auth_${token}`);
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   const fileId = req.params.id;
-  const file = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+  const file = await dbClient._client.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
   if (!file) return res.status(404).json({ error: 'Not found' });
   return res.json(file);
 };
@@ -82,13 +83,13 @@ FilesController.getIndex = async (req, res) => {
 
   const parentId = req.query.parentId ? ObjectId(req.query.parentId) : '0';
   const userId = ObjectId(userIdString);
-  const filesCount = await dbClient.dbClient.collection('files')
+  const filesCount = await dbClient._client.collection('files')
     .countDocuments({ userId, parentId });
 
   if (filesCount === '0') return res.json([]);
 
   const skip = (parseInt(req.query.page, 10) || 0) * 20;
-  const files = await dbClient.dbClient.collection('files')
+  const files = await dbClient._client.collection('files')
     .aggregate([
       { $match: { userId, parentId } },
       { $skip: skip },
