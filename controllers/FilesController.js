@@ -72,4 +72,36 @@ FilesController.getShow = async (req, res) => {
   return res.json(file);
 };
 
+FilesController.getIndex = async (req, res) => {
+  const token = req.header('X-Token');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const userIdString = await redisClient.get(`auth_${token}`);
+
+  if (!userIdString) return res.status(401).json({ error: 'Unauthorized' });
+
+  const parentId = req.query.parentId ? ObjectId(req.query.parentId) : '0';
+  const userId = ObjectId(userIdString);
+  const filesCount = await dbClient.dbClient.collection('files')
+    .countDocuments({ userId, parentId });
+
+  if (filesCount === '0') return res.json([]);
+
+  const skip = (parseInt(req.query.page, 10) || 0) * 20;
+  const files = await dbClient.dbClient.collection('files')
+    .aggregate([
+      { $match: { userId, parentId } },
+      { $skip: skip },
+      { $limit: 20 },
+    ]).toArray();
+
+  const modifyResult = files.map((file) => ({
+    ...file,
+    id: file._id,
+    _id: undefined,
+  }));
+
+  return res.json(modifyResult);
+};
+
 export default FilesController;
