@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { ObjectId } from 'mongodb';
 import path from 'path';
+import mime from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
@@ -102,6 +103,63 @@ FilesController.getIndex = async (req, res) => {
   }));
 
   return res.json(modifyResult);
+};
+
+FilesController.putPublish = async (req, res) => {
+  const token = req.header('X-Token');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const userId = await redisClient.get(`auth_${token}`);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const fileId = req.params.id;
+  const file = await dbClient.dbClient.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+
+  await dbClient.dbClient._client.collection('files').updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: true } });
+
+  const updatedFile = await dbClient._client.dbClient._client.collection('files').findOne({ _id: ObjectId(fileId) });
+  return res.status(200).json(updatedFile);
+};
+
+FilesController.putUnpublish = async (req, res) => {
+  const token = req.header('X-Token');
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+  const userId = await redisClient.get(`auth_${token}`);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const fileId = req.params.id;
+  const file = await dbClient._client.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+
+  await dbClient._client.collection('files').updateOne({ _id: ObjectId(fileId) }, { $set: { isPublic: false } });
+
+  const updatedFile = await dbClient._client.collection('files').findOne({ _id: ObjectId(fileId) });
+  return res.status(200).json(updatedFile);
+};
+
+FilesController.getFile = async (req, res) => {
+  const token = req.header('X-Token');
+  const userId = await redisClient.get(`auth_${token}`);
+  const fileId = req.params.id;
+  const { size } = req.query;
+  const file = await dbClient._client.collection('files').findOne({ _id: ObjectId(fileId) });
+  // file private and user not signin
+  // file private and user is sign in but not the owner
+  if (!file || (!file.isPublic && (!userId || userId !== file.userId.toString()))) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  if (file.type === 'folder') return res.status(400).json({ error: "A folder doesn't have content" });
+
+  let { localPath } = file;
+  if (size) localPath = `${localPath}_${size}`;
+
+  if (!fs.existsSync(localPath)) return res.status(404).json({ error: 'Not found' });
+
+  res.setHeader('Content-Type', mime.lookup(file.name));
+  return res.sendFile(localPath);
 };
 
 export default FilesController;
